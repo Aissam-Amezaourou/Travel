@@ -1,0 +1,86 @@
+version: '2'
+
+services:
+
+  nginx:
+    #image: nginx # we need extra, build our own container
+    build: dockers/nginx
+    restart: 'no'
+    volumes_from:
+      - volumes_source
+      - web
+      - volumes_data
+    volumes:
+        - ${SRCDIR}/dockers/etc/nginx/sites-enabled:/etc/nginx/sites-enabled
+        - ${SRCDIR}/dockers/etc/nginx/nginx.conf:/etc/nginx/nginx.conf
+        - ${SRCDIR}/dockers/etc/nginx/htpasswd.conf:/etc/nginx/.htpasswd
+    ports:
+       - "${HTTPPORT}:80"
+    links:
+       - web:phpfpm
+
+  # Important , apres chaque upload, verifier wp-config.php pour y ajouter 
+
+  web:
+      build: dockers/wordpress
+      restart: 'no'
+      links:
+       - mysql
+       - memcached
+      volumes_from:
+        - volumes_source
+        - volumes_data
+      volumes:
+        - ${SRCDIR}/dockers/etc/php/php.ini:/usr/local/etc/php/php.ini
+        - ${SRCDIR}/dockers/etc/php/www.conf:/usr/local/etc/php-fpm.d/www.conf
+        - ${SRCDIR}/dockers/run.sh:/run.sh
+        - ${SRCDIR}:/workspace
+      dns:
+        - 8.8.8.8
+        - 8.8.4.4
+      entrypoint: /run.sh
+      command : php-fpm
+
+  mysql:
+      image: mariadb:10.3.5
+      restart: 'no'
+      volumes_from:
+        - volumes_data
+      environment:
+       - MYSQL_ROOT_PASSWORD=password
+       - MYSQL_DATABASE=wordpress
+      volumes:
+       - ./dockers/etc/mysql:/etc/mysql/conf.d
+
+  memcached:
+      restart: 'no'
+      image: memcached
+
+  mailhog:
+      image: mailhog/mailhog:v1.0.0
+      ports:
+        - "1025:1025"
+        - "8025:8025"
+
+
+### Sources directory ##############@
+  volumes_source:
+    image: tianon/true
+    volumes:
+      - ./themes:/var/www/html/wp-content/themes
+      - ./plugins:/var/www/html/wp-content/plugins
+      - ./mu-plugins:/var/www/html/wp-content/mu-plugins
+      - ./dockers:/var/www/html/dockers
+      - ./wp-config.docker.php:/var/www/html/wp-config.php
+      - ./composer.json:/var/www/html/composer.json
+      - ./vendor:/var/www/html/vendor
+      #- ./robots.txt:/var/www/html/robots.txt
+
+
+### Databases Data Container ################################
+
+  volumes_data:
+      image: tianon/true
+      volumes:
+          - ${DATADIR}/data/mysql:/var/lib/mysql
+          - ${DATADIR}/data/uploads:/var/www/html/wp-content/uploads

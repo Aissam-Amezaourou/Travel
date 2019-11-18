@@ -1,0 +1,12 @@
+{
+    "name": "mitacademy/travel",
+    "require": {
+        "phpoffice/phpspreadsheet": "^1.9"
+    },
+    "authors": [
+        {
+            "name": "snake",
+            "email": "snake@mit-academy.net"
+        }
+    ]
+}
